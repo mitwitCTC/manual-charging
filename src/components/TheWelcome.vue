@@ -1,88 +1,225 @@
-<script setup>
-import WelcomeItem from './WelcomeItem.vue'
-import DocumentationIcon from './icons/IconDocumentation.vue'
-import ToolingIcon from './icons/IconTooling.vue'
-import EcosystemIcon from './icons/IconEcosystem.vue'
-import CommunityIcon from './icons/IconCommunity.vue'
-import SupportIcon from './icons/IconSupport.vue'
+<script>
+let ticketModal = null;
+let deleteModal = null;
+const Api = 'http://219.85.163.90:5000';
+export default {
+  data() {
+    return {
+      tickets: [],
+      tempTicket: {},
+      stations: [],
+      isNewTicket: true,
+    }
+  },
+  methods: {
+    getStations() {
+      const getStationsApi = `${Api}/redeemdb/charging_toon/stations`;
+      this.$http
+        .get(getStationsApi)
+        .then((response) => {
+          this.stations = response.data;
+        })
+    },
+    getInfos() {
+      const getInfosApi = `${Api}/charging_toon/carIn`;
+      this.$http
+        .get(getInfosApi)
+        .then((response) => {
+          this.tickets = response.data;
+        })
+    },
+    openTicketModal(status, ticket) {
+      ticketModal.show();
+      if (status === 'create') {
+        this.isNewTicket = true;
+        this.tempTicket = {};
+      } else if (status === 'edit') {
+        this.isNewTicket = false;
+        this.tempTicket = JSON.parse(JSON.stringify(ticket));
+      }
+    },
+    updateTicket() {
+      let updateTicketApi = `${Api}/charging_toon/createCarIn`;
+      if (this.isNewTicket) {
+        if (this.tempTicket.ArrivalTime !== null || this.tempTicket.ArrivalTime != "" || this.tempTicket.ArrivalTime !== undefined) {
+          this.tempTicket.ArrivalTime = this.tempTicket.ArrivalTime.split('T')[0] + ' ' + this.tempTicket.ArrivalTime.split('T')[1];
+        };
+        this.$http
+          .post(updateTicketApi, { target: this.tempTicket })
+          .then((response) => {
+            alert(response.data.message)
+            this.getInfos();
+          })
+        ticketModal.hide();
+      } else {
+        updateTicketApi = `${Api}/charging_toon/updatePlate/${this.tempTicket.id}`;
+        this.$http
+          .put(updateTicketApi, { target: this.tempTicket })
+          .then((response) => {
+            alert(response.data.message);
+            this.getInfos();
+          })
+        ticketModal.hide();
+      }
+    },
+    openDeleteModal(ticket) {
+      deleteModal.show();
+      this.tempTicket = JSON.parse(JSON.stringify(ticket));
+    },
+    deleteTicket() {
+      let deleteTicketApi = `${Api}/charging_toon/deleteCarIn/${this.tempTicket.id}`;
+      this.$http
+        .put(deleteTicketApi)
+        .then((response) => {
+          deleteModal.hide();
+          alert(response.data.message);
+          this.getInfos();
+        });
+    },
+    initModal() {
+      ticketModal = new bootstrap.Modal('#ticketModal');
+      deleteModal = new bootstrap.Modal('#deleteModal');
+    }
+  },
+  mounted() {
+    this.getStations();
+    this.getInfos();
+    setInterval(() => this.getInfos(), 5000);
+    this.initModal();
+  },
+}
 </script>
 
 <template>
-  <WelcomeItem>
-    <template #icon>
-      <DocumentationIcon />
-    </template>
-    <template #heading>Documentation</template>
+  <div id="app">
+    <div class="container">
+      <table class="table table-hover text-center">
+        <thead>
+          <tr class="h2">
+            <th scope="col">場站 Id</th>
+            <th scope="col">車位</th>
+            <th scope="col">車號</th>
+            <th scope="col">入場時間</th>
+            <th scope="col"><button type="button" class="btn btn-warning" data-bs-toggle="modal"
+                data-bs-target="#ticketModal" @click="openTicketModal('create')">新增</button>
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="ticket in tickets" :key="ticket.id" class="fs-4">
+            <th scope="row">{{ ticket.stationId }}</th>
+            <td>{{ ticket.spaceId }}</td>
+            <td>{{ ticket.checkPlate }}</td>
+            <td>{{ ticket.ArrivalTime }}</td>
+            <td>
+              <a href="#"><img src="../assets/edit.png" alt="edit" style="width: 25px;" data-bs-toggle="modal"
+                  data-bs-target="#ticketModal" @click="openTicketModal('edit', ticket)"></a>
+              <a href="#"><img src="../assets/delete.png" alt="delete" style="width: 25px; margin-left: 25px;"
+                  data-bs-toggle="modal" data-bs-target="#deleteModal" @click="openDeleteModal(ticket)"></a>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      <!-- Modal -->
+      <div class="modal fade" id="ticketModal" tabindex="-1" aria-labelledby="ticketModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+          <div class="modal-content">
+            <div class="modal-header bg-warning">
+              <h5 class="modal-title" id="ticketModalLabel">{{ isNewTicket ? '新增開票' : '編輯' }}</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <form id="myForm" v-if="isNewTicket" @submit.prevent="updateTicket">
+                <div class="form-floating mb-3">
+                  <select class="form-select" id="floatingSelect" aria-label="Floating label select example" required
+                    v-model="tempTicket.stationId">
+                    <option disabled>請選擇場站名稱</option>
+                    <option v-for="station in stations" :value="station.id">{{
+                      station.name }}</option>
+                  </select>
+                  <label for="floatingSelect">請選擇場站名稱</label>
+                </div>
 
-    Vue’s
-    <a href="https://vuejs.org/" target="_blank" rel="noopener">official documentation</a>
-    provides you with all information you need to get started.
-  </WelcomeItem>
+                <div class="form-floating mb-3">
+                  <input type="number" class="form-control" id="floatingInput" v-model="tempTicket.spaceId" required>
+                  <label for="floatingInput">請輸入車位號</label>
+                </div>
 
-  <WelcomeItem>
-    <template #icon>
-      <ToolingIcon />
-    </template>
-    <template #heading>Tooling</template>
+                <div class="form-floating mb-3">
+                  <input type="text" class="form-control" id="floatingInput" v-model="tempTicket.checkPlate" required>
+                  <label for="floatingInput">請輸入車號</label>
+                </div>
 
-    This project is served and bundled with
-    <a href="https://vitejs.dev/guide/features.html" target="_blank" rel="noopener">Vite</a>. The
-    recommended IDE setup is
-    <a href="https://code.visualstudio.com/" target="_blank" rel="noopener">VSCode</a> +
-    <a href="https://github.com/johnsoncodehk/volar" target="_blank" rel="noopener">Volar</a>. If
-    you need to test your components and web pages, check out
-    <a href="https://www.cypress.io/" target="_blank" rel="noopener">Cypress</a> and
-    <a href="https://on.cypress.io/component" target="_blank" rel="noopener"
-      >Cypress Component Testing</a
-    >.
+                <div class="form-floating mb-3">
+                  <input type="datetime-local" class="form-control" id="floatingInput" step="1"
+                    v-model="tempTicket.ArrivalTime" required>
+                  <label for="floatingInput">請輸入入場時間</label>
+                </div>
 
-    <br />
+                <div class="modal-footer">
+                  <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">取消</button>
+                  <button type="submit" id="submitButton" class="btn btn-warning">確認</button>
+                </div>
+              </form>
+              <form id="myForm" v-else>
+                <div class="form-floating mb-3">
+                  <select class="form-select" id="floatingSelect" aria-label="Floating label select example" required
+                    v-model="tempTicket.stationId" disabled>
+                    <option disabled>請選擇場站名稱</option>
+                    <option v-for="station in stations" :value="station.id">{{ station.name }}</option>
+                  </select>
+                  <label for="floatingSelect">請選擇場站名稱</label>
+                </div>
 
-    More instructions are available in <code>README.md</code>.
-  </WelcomeItem>
+                <div class="form-floating mb-3">
+                  <input type="number" class="form-control" id="floatingInput" v-model="tempTicket.spaceId" required
+                    disabled>
+                  <label for="floatingInput">請輸入車位號</label>
+                </div>
 
-  <WelcomeItem>
-    <template #icon>
-      <EcosystemIcon />
-    </template>
-    <template #heading>Ecosystem</template>
+                <div class="form-floating mb-3">
+                  <input type="text" class="form-control" id="floatingInput" v-model="tempTicket.checkPlate" required>
+                  <label for="floatingInput">請輸入車號</label>
+                </div>
 
-    Get official tools and libraries for your project:
-    <a href="https://pinia.vuejs.org/" target="_blank" rel="noopener">Pinia</a>,
-    <a href="https://router.vuejs.org/" target="_blank" rel="noopener">Vue Router</a>,
-    <a href="https://test-utils.vuejs.org/" target="_blank" rel="noopener">Vue Test Utils</a>, and
-    <a href="https://github.com/vuejs/devtools" target="_blank" rel="noopener">Vue Dev Tools</a>. If
-    you need more resources, we suggest paying
-    <a href="https://github.com/vuejs/awesome-vue" target="_blank" rel="noopener">Awesome Vue</a>
-    a visit.
-  </WelcomeItem>
+                <div class="form-floating mb-3">
+                  <input type="datetime-local" class="form-control" id="floatingInput" step="1"
+                    v-model="tempTicket.ArrivalTime" required disabled>
+                  <label for="floatingInput">請輸入入場時間</label>
+                </div>
 
-  <WelcomeItem>
-    <template #icon>
-      <CommunityIcon />
-    </template>
-    <template #heading>Community</template>
-
-    Got stuck? Ask your question on
-    <a href="https://chat.vuejs.org" target="_blank" rel="noopener">Vue Land</a>, our official
-    Discord server, or
-    <a href="https://stackoverflow.com/questions/tagged/vue.js" target="_blank" rel="noopener"
-      >StackOverflow</a
-    >. You should also subscribe to
-    <a href="https://news.vuejs.org" target="_blank" rel="noopener">our mailing list</a> and follow
-    the official
-    <a href="https://twitter.com/vuejs" target="_blank" rel="noopener">@vuejs</a>
-    twitter account for latest news in the Vue world.
-  </WelcomeItem>
-
-  <WelcomeItem>
-    <template #icon>
-      <SupportIcon />
-    </template>
-    <template #heading>Support Vue</template>
-
-    As an independent project, Vue relies on community backing for its sustainability. You can help
-    us by
-    <a href="https://vuejs.org/sponsor/" target="_blank" rel="noopener">becoming a sponsor</a>.
-  </WelcomeItem>
+                <div class="modal-footer">
+                  <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">取消</button>
+                  <button type="submit" id="submitButton" class="btn btn-warning" @click="updateTicket">確認</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+          <div class="modal-content">
+            <div class="modal-header bg-warning">
+              <h5 class="modal-title" id="ticketModalLabel">確認刪除</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <form id="myDeleteForm" @submit.prevent="deleteTicket">
+                <p v-if="tempTicket.stationId == 1">場站：<span>測試</span></p>
+                <p v-if="tempTicket.stationId == 396">場站：<span>正心</span></p>
+                <p v-if="tempTicket.stationId == 260">場站：<span>林森</span></p>
+                <p v-if="tempTicket.stationId == 433">場站：<span>南屯五權</span></p>
+                <p>車號：<span>{{ tempTicket.checkPlate }}</span></p>
+                <div class="modal-footer">
+                  <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">取消</button>
+                  <button type="submit" id="submitButton" class="btn btn-warning">確認</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 </template>
