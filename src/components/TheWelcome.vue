@@ -9,6 +9,7 @@ export default {
       tempTicket: {},
       stations: [],
       isNewTicket: true,
+      isLoading: true,
     }
   },
   methods: {
@@ -28,6 +29,7 @@ export default {
         .post(getInfosApi, { target: { companyId: this.companyId } })
         .then((response) => {
           this.tickets = response.data;
+          this.isLoading = false;
           this.getOrganizeTickets();
         })
     },
@@ -111,7 +113,10 @@ export default {
 <template>
   <div id="app">
     <div class="container">
-      <table class="table table-hover text-center mt-3">
+      <div v-if="isLoading" class="loading">
+        <img src="../assets/loading.svg" alt="">
+      </div>
+      <table v-else class="table table-hover text-center mt-3">
         <thead>
           <tr class="h2">
             <th scope="col">場站 Id</th>
@@ -247,3 +252,10 @@ export default {
     </div>
   </div>
 </template>
+<style>
+.loading {
+  position: absolute;
+  top: 50%;
+  right: 50%;
+}
+</style>
