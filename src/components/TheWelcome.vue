@@ -13,19 +13,22 @@ export default {
   },
   methods: {
     getStations() {
+      this.decryptedId();
       const getStationsApi = `${Api}/redeemdb/charging_toon/stations`;
       this.$http
-        .get(getStationsApi)
+        .post(getStationsApi, { target: { companyId: this.companyId } })
         .then((response) => {
           this.stations = response.data;
         })
     },
     getInfos() {
+      this.decryptedId();
       const getInfosApi = `${Api}/charging_toon/carIn`;
       this.$http
-        .get(getInfosApi)
+        .post(getInfosApi, { target: { companyId: this.companyId } })
         .then((response) => {
           this.tickets = response.data;
+          this.getOrganizeTickets();
         })
     },
     openTicketModal(status, ticket) {
@@ -79,7 +82,22 @@ export default {
     initModal() {
       ticketModal = new bootstrap.Modal('#ticketModal');
       deleteModal = new bootstrap.Modal('#deleteModal');
-    }
+    },
+    decryptedId() {
+      // 解碼路由參數
+      this.companyId = atob(this.$route.params.c);
+    },
+    getOrganizeTickets() {
+      // 整合場站名稱至在場資訊列表
+      this.stations.forEach((itemA) => {
+        const matchingItemB = this.tickets.find((itemB) => itemA.id === itemB.stationId);
+        if (matchingItemB) {
+          // 如果找到相符的項目，將 A 陣列的數據添加到 B 陣列
+          matchingItemB.name = itemA.name;
+          matchingItemB.isEVCharging = itemA.isEVCharging;
+        }
+      });
+    },
   },
   mounted() {
     this.getStations();
@@ -93,10 +111,11 @@ export default {
 <template>
   <div id="app">
     <div class="container">
-      <table class="table table-hover text-center">
+      <table class="table table-hover text-center mt-3">
         <thead>
           <tr class="h2">
             <th scope="col">場站 Id</th>
+            <th scope="col">場站名稱</th>
             <th scope="col">車位</th>
             <th scope="col">車號</th>
             <th scope="col">入場時間</th>
@@ -105,9 +124,10 @@ export default {
             </th>
           </tr>
         </thead>
-        <tbody>
+        <tbody v-if="tickets.length > 0">
           <tr v-for="ticket in tickets" :key="ticket.id" class="fs-4">
             <th scope="row">{{ ticket.stationId }}</th>
+            <td>{{ ticket.name }}</td>
             <td>{{ ticket.spaceId }}</td>
             <td>{{ ticket.checkPlate }}</td>
             <td>{{ ticket.ArrivalTime }}</td>
@@ -119,7 +139,11 @@ export default {
             </td>
           </tr>
         </tbody>
+        <tbody v-else class="h2">
+          <td colspan="6">目前無資料</td>
+        </tbody>
       </table>
+
       <!-- Modal -->
       <div class="modal fade" id="ticketModal" tabindex="-1" aria-labelledby="ticketModalLabel" aria-hidden="true">
         <div class="modal-dialog">
