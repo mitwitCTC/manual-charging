@@ -91,13 +91,14 @@ export default {
     },
     getOrganizeTickets() {
       // 整合場站名稱至在場資訊列表
-      this.stations.forEach((itemA) => {
-        const matchingItemB = this.tickets.find((itemB) => itemA.id === itemB.stationId);
-        if (matchingItemB) {
-          // 如果找到相符的項目，將 A 陣列的數據添加到 B 陣列
+      this.stations.forEach(itemA => {
+        // 查找所有匹配的項目
+        const matchingItemsB = this.tickets.filter(itemB => itemA.id === itemB.stationId);
+        // 將每个匹配的項目添加到在場資訊列表中
+        matchingItemsB.forEach(matchingItemB => {
           matchingItemB.name = itemA.name;
           matchingItemB.isEVCharging = itemA.isEVCharging;
-        }
+        });
       });
     },
   },
