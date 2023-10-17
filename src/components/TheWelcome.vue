@@ -2,6 +2,8 @@
 let ticketModal = null;
 let deleteModal = null;
 const Api = 'http://219.85.163.90:5000';
+import base64 from 'base64-js';
+
 export default {
   data() {
     return {
@@ -10,11 +12,13 @@ export default {
       stations: [],
       isNewTicket: true,
       isLoading: true,
+      companyId: '',
+      isEncoded: true,
     }
   },
   methods: {
     getStations() {
-      this.decryptedId();
+      // this.decryptedId();
       const getStationsApi = `${Api}/redeemdb/charging_toon/stations`;
       this.$http
         .post(getStationsApi, { target: { companyId: this.companyId } })
@@ -23,7 +27,7 @@ export default {
         })
     },
     getInfos() {
-      this.decryptedId();
+      // this.decryptedId();
       const getInfosApi = `${Api}/charging_toon/carIn`;
       this.$http
         .post(getInfosApi, { target: { companyId: this.companyId } })
@@ -85,10 +89,10 @@ export default {
       ticketModal = new bootstrap.Modal('#ticketModal');
       deleteModal = new bootstrap.Modal('#deleteModal');
     },
-    decryptedId() {
-      // 解碼路由參數
-      this.companyId = atob(this.$route.params.c);
-    },
+    // decryptedId() {
+    //   // 解碼路由參數
+    //   this.companyId = atob(this.$route.params.c);
+    // },
     getOrganizeTickets() {
       // 整合場站名稱至在場資訊列表
       this.stations.forEach(itemA => {
@@ -108,6 +112,9 @@ export default {
     setInterval(() => this.getInfos(), 5000);
     this.initModal();
   },
+  created() {
+    this.companyId = atob(this.$route.params.c)
+  }
 }
 </script>
 
