@@ -2,7 +2,6 @@
 let ticketModal = null;
 let deleteModal = null;
 const Api = 'http://219.85.163.90:5000';
-import base64 from 'base64-js';
 
 export default {
   data() {
@@ -13,7 +12,6 @@ export default {
       isNewTicket: true,
       isLoading: true,
       companyId: '',
-      isEncoded: true,
     }
   },
   methods: {
@@ -89,10 +87,6 @@ export default {
       ticketModal = new bootstrap.Modal('#ticketModal');
       deleteModal = new bootstrap.Modal('#deleteModal');
     },
-    // decryptedId() {
-    //   // 解碼路由參數
-    //   this.companyId = atob(this.$route.params.c);
-    // },
     getOrganizeTickets() {
       // 整合場站名稱至在場資訊列表
       this.stations.forEach(itemA => {
